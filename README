@@ -7,18 +7,23 @@ https://issues.apache.org/jira/browse/NETBEANS-1157
 https://issues.apache.org/jira/browse/NETBEANS-1145
 https://issues.apache.org/jira/browse/NETBEANS-3332
 
+The application consists of a trivial window (module HiMom), a branding
+module, and an application module, where all of the action happens. The
+objective is for the application module to be droppable into any RCP
+application, providing robust NBI installers for Windows and Linux.
 
-This package enables Windows installers to work on modern versions of
-Java.  The application is built using Maven and the maven-nbm-plugin,
-however, the modified harness files should be usable with an ant build,
-with some modification of the embedded properties.
+The application package enables Windows installers to work on modern
+versions of Java.  The application is built using Maven and the
+nbm-maven-plugin, however, the modified harness files should be usable
+with an ant build, with some modification of the embedded properties.
 
-The package includes two binary JREs, one for windows and one for
-linux. It would have been nice to download and build these from the
-package, but that was sufficiently complex with Maven/Ant, that it
-destroyed any educational benefit. Bot files are self-extracting zips,
-so if you rename them to "jre.zip" or "jre-linux.zip", you will be able
-to examine their contents.
+All of the custom NBI files are found in
+application/src/main/resources/dist.  The package includes two binary
+JREs, one for windows (jre.exe) and one for linux (jre-linux). It would
+have been nice to download and build these from the package, but that was
+sufficiently complex with Maven/Ant that it destroyed any educational
+benefit. Bot files are self-extracting zips, so if you rename them to
+"jre.zip" or "jre-linux.zip", you will be able to examine their contents.
 
 Much of this was guided by an old post of Geertjan Wielenga at
 https://blogs.oracle.com/geertjan/installing-the-jre-via-an-applications-installer-via-windows
@@ -28,6 +33,29 @@ that the linux JRE is expected to have the jre under a directory called
 "jre", while the windows JRE is expected the directories bin/, conf/,
 lib/ and legal/ to be top level directories in the zip.
 
+Currently only linux and windows have been tested. MacOS might work.
+
+The pom provides several configuration variables, in the application pom under the nbm-maven-plugin configuration:
+
+                        <!-- If you want working installers, as of NB 11.2, all of these should be true, except testWindowsLauncher -->
+                        <!-- fix a bug in the unix installer config file -->
+                        <fixUnixConfFile>true</fixUnixConfFile>
+                        <!-- remove the -XbootClassPath/p argument to javac which is gone from Java 11 -->
+                        <fixNoBootClassPath>true</fixNoBootClassPath>
+                        <!-- Fix the javac.source=1.5, javac.target=1.5 bugs in the project.properties files in the harness. Replace with target=source=11
+                            Edit template.xml to change desired target/source.
+                        -->
+                        <fixJavaSourceTargetProperties>true</fixJavaSourceTargetProperties>
+                        <!-- Modify the engine.jar file to include custom classes to trick the buggy windows installer into working .
+                            This will also use the custom create-bundle task to embed version numbers in the windows installer that
+                            will work around the bugs.
+                        -->
+                        <hackEngineJar>true</hackEngineJar>
+                        <!-- embed a jre in the installers. You could set this to false, but then why are you here? -->
+                        <includeJRE>true</includeJRE>
+                        <!-- test a new nlw.exe. This file will have to exist in main/resources/installers. This fail if hackEngineJar=true. Instead, it
+                        will put the test nlw.exe in the engine jar and use it to construct an installer. This also assumes includeJRE -->
+                        <testWindowsLauncher>false</testWindowsLauncher>
 
 The package works around bugs in the NBI in several ways. If the
 configuration variable hackEngineJar is set to "true" in the pom,
@@ -46,5 +74,16 @@ NBI code.
 In addition, the package corrects numerous textual errors in the various
 ant scripts and config files in the harness. See the pom to enable/disable
 these fixes.
+
+Finally, the package provides a means to test new windows installer
+"launchers". Place the candidate launcher, called "nlw.exe" in
+main/src/resources/installers, set testWindowLauncher to true and
+hackEngineJar to false. If this yields a working installer, the nlw.exe
+is good.
+
+A useful trick when diagnosing a windows installer is to run it
+"installerName --verbose --output installLog". installLog will have a full
+transcript of the install process.  If you have set hackEngineJar, you
+will see the "fake" version numbers that are generated by the installer.
 
 I hope this is helpful.
