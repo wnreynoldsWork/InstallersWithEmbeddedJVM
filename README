@@ -93,5 +93,5 @@ This code contains original and adapted code from the following organizations:
 
 AdoptOpenJDK https://adoptopenjdk.net/
 Info-Zip http://infozip.sourceforge.net/
-The unzip package from CentOS: unzip.x86_64
+The unzip package from CentOS: unzip.x86_64 https://www.centos.org/
 Apache Netbeans: https://netbeans.apache.org/
