@@ -63,13 +63,34 @@
                 <groupId>org.apache.netbeans.utilities</groupId>
                 <artifactId>nbm-maven-plugin</artifactId>
                 <configuration>
-                    <installerOsWindows>true</installerOsWindows>
+                    <!-- preferable that linux runs first  -->
                     <installerOsLinux>true</installerOsLinux>
+                    <installerOsWindows>true</installerOsWindows>
                     <!-- these won't work -->
                     <installerOsSolaris>false</installerOsSolaris>
                     <installerOsMacosx>false</installerOsMacosx>
                     <templateFile>src/main/resources/installers/template.xml</templateFile>
-                    <usersettings>src/main/resources/installers/installers.properties</usersettings>
+                    <userSettings>
+                        <!-- If you want working installers, as of NB 11.2, all of these should be true, except testWindowsLauncher -->
+                        <!-- fix a bug in the unix installer config file -->
+                        <fixUnixConfFile>true</fixUnixConfFile>
+                        <!-- remove the -XbootClassPath/p argument to javac which is gone from Java 11 -->
+                        <fixNoBootClassPath>true</fixNoBootClassPath>
+                        <!-- Fix the javac.source=1.5, javac.target=1.5 bugs in the project.properties files in the harness. Replace with target=source=11
+                            Edit template.xml to change desired target/source.
+                        -->
+                        <fixJavaSourceTargetProperties>true</fixJavaSourceTargetProperties>
+                        <!-- Modify the engine.jar file to include custom classes to trick the buggy windows installer into working .
+                            This will also use the custom create-bundle task to embed version numbers in the windows installer that
+                            will work around the bugs.
+                        -->
+                        <hackEngineJar>true</hackEngineJar>
+                        <!-- embed a jre in the installers. You could set this to false, but then why are you here? -->
+                        <includeJRE>true</includeJRE>
+                        <!-- test a new nlw.exe. This file will have to exist in main/resources/installers. This fail if hackEngineJar=true. Instead, it
+                        will put the test nlw.exe in the engine jar and use it to construct an installer. This also assumes includeJRE -->
+                        <testWindowsLauncher>false</testWindowsLauncher>
+                    </userSettings>
                 </configuration>
             </plugin>
             <plugin>
@@ -104,6 +125,7 @@
                         <executions>
                             <execution>
                                 <id>extra</id>
+                                <phase>deploy</phase>
                                 <goals>
                                     <goal>build-installers</goal>
                                 </goals>

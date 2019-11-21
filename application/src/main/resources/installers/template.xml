@@ -17,8 +17,11 @@
     specific language governing permissions and limitations
     under the License.
 
-XXX customize my build.xml to fix project.properties
-XXX add copy task to replace build.xml
+    CUSTOM
+        - This file copies the modified build.xml to the build directory
+        - It fixes the broken project.properties in the harness file.
+        - The custom properties are listed in the init task under CUSTOM
+
 -->
 <project name="build installers" default="build" basedir=".">
     <!--<property file="${basedir}/template.properties"/>-->
@@ -36,6 +39,7 @@ XXX add copy task to replace build.xml
             <isset property="suite.platform.branding.token"/>
         </condition>
         <property file="${suite.location}/nbproject/project.properties" prefix="suite.props."/>
+
     </target>
     <target name="-init-maven-props" if="do.load.maven.props" depends="-init-props">
         <!-- There is no need to read any property from pom.xml - the properties are solved by maven plug-in. -->
@@ -45,6 +49,11 @@ XXX add copy task to replace build.xml
     </target>
 
     <target name="init" depends="-clean,-init-ant-props,-init-maven-props">
+        <taskdef
+            name="if"
+            classpath="${suite.location}/target/installer/modules/ext/nbi-ant-tasks.jar"
+            classname="org.netbeans.installer.infra.build.ant.If"/>
+
         <property name="installer.build.dir" value="${suite.location}/build/installer"/>
         <property name="suite.dist.directory" value="${suite.location}/dist"/>
         <property name="suite.dist.zip"       value="${suite.dist.directory}/${suite.props.app.name}.zip"/>
@@ -53,18 +62,31 @@ XXX add copy task to replace build.xml
         <mkdir dir="${installer.build.dir}"/>
 
         <!-- CUSTOM new properties-->
+        <!-- this has numerous changes, including modifying the engine.jar to enable the broken windows launcher to work -->
         <property name="new.build.xml" value="${suite.location}/src/main/resources/installers/build.xml"/>
-        <property name="new.build-impl.xml" value="${suite.location}/src/main/resources/installers/build-impl.xml"/>
-        <property name="build.impl.helloworld" value="${suite.location}/target/installer/nbi/stub/ext/components/products/helloworld/nbproject/build-impl.xml" />
+
+        <!-- this has been modified to remove the -Xbootclasspath/p argument to javac, which is not supported under Java 11.
+             it replaces files at build.impl.helloworld.dest.dest and build.impl.stub.ext.engine.dest
+        -->
+        <property name="build.impl.nobootClassPath" value="${suite.location}/src/main/resources/installers/build-impl.xml"/>
+        <property name="build.impl.helloworld.dest" value="${suite.location}/target/installer/nbi/stub/ext/components/products/helloworld/nbproject/build-impl.xml" />
         <property name="build.impl.stub.ext.engine" value="${suite.location}/target/installer/nbi/stub/ext/engine/nbproject/build-impl.xml"/>
+
+        <!-- the new ConfigurationLogic.java supports extracting a JRE - see  https://blogs.oracle.com/geertjan/installing-the-jre-via-an-applications-installer-via-windows
+        -->
         <property name="configurationlogic.java" value="${suite.location}/src/main/resources/installers/ConfigurationLogic.java.replacement"/>
         <property name="configurationlogic.java.dest" value="${suite.location}/target/installer/nbi/stub/ext/components/products/helloworld/src/org\mycompany/ConfigurationLogic.java"/>
-        <property name="jre.exe" value="${suite.location}/src/main/resources/installers/jre.exe"/>
-        <property name="jre.exe.dest" value="${suite.location}/target/installerbuild/jre.exe"/>
-        <property name="jre-linux" value="${suite.location}/src/main/resources/installers/jre-linux"/>
-        <property name="jre-linux.dest" value="${suite.location}/target/installerbuild/jre-linux"/>
 
-        <!-- CUSTOM end new properties -->
+        <!-- Property files with broken javac.source=1.5 and javac.target=1.5 flags -->
+        <property name="broken.project.properties.1" value="${suite.location}/target/installer/nbi/stub/ext/engine/nbproject/project.properties"/>
+        <property name="broken.project.properties.2" value="${suite.location}/target/installer/nbi/stub/ext/components/products/helloworld/nbproject/project.properties"/>
+
+        <if property="testWindowsLauncher" value="true">
+            <if property="hackEngineJar" value="true">
+                <fail message="testWindowsLauncher and hackEngineJar are mutually exclusive. Only one can be true"/>
+            </if>
+        </if>
+        <!-- /CUSTOM end new properties -->
 
     </target>
 
@@ -78,9 +100,18 @@ XXX add copy task to replace build.xml
     <target name="-build">
     </target>
 
+    <!-- CUSTOM -->
     <target name="run-build">
-        <ant dir="${installer.build.dir}" inheritAll="false"/>
+        <ant dir="${installer.build.dir}" inheritAll="false">
+            <propertyset>
+                <propertyref name="hackEngineJar"/>
+                <propertyref name="includeJRE"/>
+                <propertyref name="testWindowsLauncher"/>
+                <propertyref name="fixUnixConfFile"/>
+            </propertyset>
+        </ant>
     </target>
+    <!-- /CUSTOM -->
 
     <target name="-init-zip">
         <condition property="do.build.zip">
@@ -111,28 +142,39 @@ XXX add copy task to replace build.xml
 
     <target name="prepare-sources">
         <!-- CUSTOM -->
-        <!-- echoproperties/ -->
-        <!-- add my custom build.xml to the installdir -->
-        <echo message="HIMOM copying ${new.build.xml} to ${installer.build.dir}" />
-        <!-- delete file="${installer.build.dir}/build.xml" verbose="true" /-->
+
+
+        <!-- add the custom build.xml to the installdir -->
+        <echo message="CUSTOM copying ${new.build.xml} to ${installer.build.dir}" />
         <copy file="${new.build.xml}" todir="${installer.build.dir}" overwrite="true" force="true" />
 
         <!-- fix the broken build-impl.xml's in installdir *before* we do any copying -->
-        <!-- add my custom build-impl.xml to the targets -->
-        <echo message="HIMOM copying ${new.build-impl.xml} to ${build.impl.helloworld}" />
-        <copy file="${new.build-impl.xml}" tofile="${build.impl.helloworld}" overwrite="true" force="true" />
-        <echo message="HIMOM copying ${new.build-impl.xml} to ${build.impl.stub.ext.engine}" />
-        <copy file="${new.build-impl.xml}" tofile="${build.impl.stub.ext.engine}" overwrite="true" force="true" />
+        <!-- add custom build-impl.xml to the targets -->
+        <if property="fixNoBootClassPath" value="true">
+            <echo message="CUSTOM copying ${build.impl.nobootClassPath} to ${build.impl.helloworld.dest}" />
+            <copy file="${build.impl.nobootClassPath}" tofile="${build.impl.helloworld.dest}" overwrite="true" force="true" />
+            <echo message="CUSTOM copying ${build.impl.nobootClassPath} to ${build.impl.stub.ext.engine}" />
+            <copy file="${build.impl.nobootClassPath}" tofile="${build.impl.stub.ext.engine}" overwrite="true" force="true" />
+        </if>
 
-        <!-- copy ConfigurationLogic.java to the installer source directory-->
-        <echo message="HIMOM copying ${configurationlogic.java} to ${configurationlogic.java.dest}"/>
-        <copy file="${configurationlogic.java}" tofile="${configurationlogic.java.dest}" overwrite="true" force="true" />
+        <if property="includeJRE" value="true">
+            <!-- copy ConfigurationLogic.java to the installer source directory-->
+            <echo message="CUSTOM copying ${configurationlogic.java} to ${configurationlogic.java.dest}"/>
+            <copy file="${configurationlogic.java}" tofile="${configurationlogic.java.dest}" overwrite="true" force="true" />
+        </if>
 
-        <!-- copy jre.exe to the installer build directory-->
-        <echo message="HIMOM copying ${jre.exe} to ${jre.exe.dest}"/>
-        <copy file="${jre.exe}" tofile="${jre.exe.dest}" overwrite="true" force="true" />
-        <echo message="HIMOM copying ${jre-linux} to ${jre-linux.dest}"/>
-        <copy file="${jre-linux}" tofile="${jre-linux.dest}" overwrite="true" force="true" />
+        <if property="fixJavaSourceTargetProperties" value="true">
+            <replace file="${broken.project.properties.1}" encoding="utf-8">
+                <replacefilter token="javac.source=1.5" value="javac.source=11"/>
+                <replacefilter token="javac.target=1.5" value="javac.target=11"/>
+            </replace>
+
+            <replace file="${broken.project.properties.2}" encoding="utf-8">
+                <replacefilter token="javac.source=1.5" value="javac.source=11"/>
+                <replacefilter token="javac.target=1.5" value="javac.target=11"/>
+            </replace>
+        </if>
+
         <!-- END CUSTOM -->
 
 
@@ -172,7 +214,6 @@ XXX add copy task to replace build.xml
 
         <copy file="${icon.path}" tofile="${installer.build.dir}/ext/components/products/helloworld/src/org/mycompany/${icon.name}"/>
 
-        <echo message="HIMOM generator = ${generator-jdk-location-forward-slashes}"/>
 
         <replace file="${installer.build.dir}/build.properties" encoding="utf-8">
             <replacefilter token="{nbi.ant.tasks.jar}"             value="${nbi.ant.tasks.jar}"/>

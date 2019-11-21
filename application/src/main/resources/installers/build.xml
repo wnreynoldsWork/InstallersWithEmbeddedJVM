@@ -17,20 +17,22 @@
     specific language governing permissions and limitations
     under the License.
 
+
+    CUSTOM This file has been modified to work with embedded JVMs
+    - It adds a new build.xml to ${nbi.ext.dir}/infra/build/products/helloworld/build.xml} which fixes a bug in the .conf, used by the Linux installer, file and adds a jdkhome variable.
+    - It modifies the nbi engine jar, replacing the classes TestJDK, CreateNativeLauncherAction and CommonLauncher, this allows the new JVM to be installed using JVM
+    version information that is acceptable to the buggy windows launcher.
+    - It builds both Linux and Windows bundles with embedded jre's. The windows bundle utilizes the CreateNativeLauncherAction features to embed version information
+    into the native installer that will be acceptable to the buggy windows launcher.
+
 -->
 <project name="build installers" default="build" basedir=".">
     <property file="${basedir}/build.properties"/>
     <property file="${basedir}/custom.properties"/>
 
+
     <!-- CUSTOM properties -->
-    <property name="no.clean" value="true"/>
-    <property name="ext.project.properties" value="nbi_all/ext/engine/nbproject/project.properties"/>
-    <property name="helloworld.project.properties" value="ext/components/products/helloworld/nbproject/project.properties"/>
-    <property name="ext.engine.project.properties" value="ext/engine/nbproject/project.properties"/>
-    <property name="nbi.all.helloworld.project.properties" value="nbi_all/ext/components/products/helloworld/nbproject/project.properties"/>
-    <property name="nbi.all.infra.helloworld.project.properties" value="nbi_all/ext/infra/build/products/helloworld/build/ext/components/products/helloworld/nbproject/project.properties"/>
-
-
+    <property name="no.clean" value="true"/> <!-- this aids in debugging -->
 
     <!-- ${basedir} is target/installarbuild -->
     <!-- Updated classes for nbi-engine.jar -->
@@ -40,13 +42,14 @@
     <property name="createnativelauncheraction.class" value="${basedir}/../classes/${createnativelauncheraction.dir}/CreateNativeLauncherAction.class"/>
     <property name="commonlauncher.dir" value="org/netbeans/installer/utils/system/launchers/impl"/>
     <property name="commonlauncher.class" value="${basedir}/../classes/${commonlauncher.dir}/CommonLauncher.class"/>
+    <property name="jre.exe" value="${basedir}/../../src/main/resources/installers/jre.exe"/>
+    <property name="jre-linux" value="${basedir}/../../src/main/resources/installers/jre-linux"/>
+    <!-- this is only used for testing -->
     <property name="nlw.exe" value="${basedir}/../../src/main/resources/installers/nlw.exe"/>
-    <property name="jre.exe" value="${basedir}/jre.exe"/>
-    <property name="jre-linux" value="${basedir}/jre-linux"/>
     <!-- end CUSTOM -->
 
 
-    <echoproperties/>
+    <!-- echoproperties/ -->
 
     <target name="build" depends="init,-build,-generate-bundles,post-build"/>
 
@@ -82,35 +85,12 @@
         </copy>
 
         <!-- CUSTOM FIXES -->
-        <replace file="${ext.project.properties}" encoding="utf-8">
-            <replacefilter token="javac.source=1.5" value="javac.source=11"/>
-            <replacefilter token="javac.target=1.5" value="javac.target=11"/>
-        </replace>
 
-        <replace file="${helloworld.project.properties}" encoding="utf-8">
-            <replacefilter token="javac.source=1.5" value="javac.source=11"/>
-            <replacefilter token="javac.target=1.5" value="javac.target=11"/>
-        </replace>
-
-        <replace file="${ext.engine.project.properties}" encoding="utf-8">
-            <replacefilter token="javac.source=1.5" value="javac.source=11"/>
-            <replacefilter token="javac.target=1.5" value="javac.target=11"/>
-        </replace>
-
-        <replace file="${nbi.all.helloworld.project.properties}" encoding="utf-8">
-            <replacefilter token="javac.source=1.5" value="javac.source=11"/>
-            <replacefilter token="javac.target=1.5" value="javac.target=11"/>
-        </replace>
-
-        <!-- aaaaaghhh this isn't there yet! -->
-        <!-- replace file="${nbi.all.infra.helloworld.project.properties}" encoding="utf-8">
-            <replacefilter token="javac.source=1.5" value="javac.source=11"/>
-            <replacefilter token="javac.target=1.5" value="javac.target=11"/>
-        </replace -->
-
-        <echo message="HIMOM copying ../../src/main/resources/installers/build_helloworld_product.xml to ${nbi.ext.dir}/infra/build/products/helloworld/build.xml"/>
+        <echo message="fixUnixConfFile Passed properties: hackEngineJar = ${hackEngineJar}, includeJRE=${includeJRE}, testWindowsLauncher=${testWindowsLauncher}" />
+        <!-- This file fixes a bug in the unix .conf file and adds a jdkhome variable pointing at the embedded jvm -->
+        <echo message="CUSTOM copying ../../src/main/resources/installers/build_helloworld_product.xml to ${nbi.ext.dir}/infra/build/products/helloworld/build.xml"/>
         <copy file="../../src/main/resources/installers/build_helloworld_product.xml"  tofile="${nbi.ext.dir}/infra/build/products/helloworld/build.xml" overwrite="true" />
-        <echo message="HIMOM done"/>
+        <echo message="CUSTOM done"/>
 
         <!-- END CUSTOM FIXES -->
 
@@ -192,42 +172,58 @@
                 value="${nbi.engine.jar}"/>
         </ant>
 
+        <!-- CUSTOM -->
         <for-each property="platform" list="${target.platforms}" separator=" ">
+            <!-- This block will modify the engine jar file with the new files that will enable the native windows launcher to work
+            while these changes should not impact hte linux installer, its' best if it appears first in the pom so tht it will run
+            with a vanilla engine.jar -->
             <if property="platform" value="windows">
-                <echo message="HIMOM Updating nbi-engine.jar with new classes" />
-                <echo message="HIMOM extracting contents of jar to engin-extract" />
-                <delete dir="engine-extract"/>
-                <mkdir dir="engine-extract"/>
-                <unjar src="${engine.jar}" dest="engine-extract">
-                    <patternset>
-                        <include name="org/netbeans/installer/utils/applications/*"/>
-                        <include name="org/netbeans/installer/utils/system/launchers/impl/*"/>
-                        <include name="org/netbeans/installer/wizard/components/actions/*"/>
-                        <include name="native/launcher/windows/*"/>
-                    </patternset>
-                </unjar>
-                <echo message="HIMOM copying ${lying.testjdk.class} to engine-extract/org/netbeans/installer/utils/applications" />
-                <copy file="${lying.testjdk.class}" todir="engine-extract/org/netbeans/installer/utils/applications" />
-                <echo message="HIMOM creating engine-extract/org/netbeans/installer/utils/applications/COPIED_TESTJDK in engine-extract/org/netbeans/installer/utils/applications" />
-                <touch file="engine-extract/org/netbeans/installer/utils/applications/COPIED_TESTJDK" />
-                <copy file="${lying.testjdk.class}" todir="engine-extract/org/netbeans/installer/utils/applications" />
+                <if property="hackEngineJar" value="true">
+                    <echo message="CUSTOM Updating nbi-engine.jar with new classes" />
+                    <echo message="CUSTOM extracting contents of jar to engine-extract" />
+                    <delete dir="engine-extract"/>
+                    <mkdir dir="engine-extract"/>
+                    <unjar src="${engine.jar}" dest="engine-extract">
+                        <patternset>
+                            <include name="native/launcher/windows/*"/>
+                        </patternset>
+                    </unjar>
+                    <echo message="CUSTOM copying ${lying.testjdk.class} to engine-extract/org/netbeans/installer/utils/applications" />
+                    <copy file="${lying.testjdk.class}" todir="engine-extract/org/netbeans/installer/utils/applications" />
+                    <echo message="CUSTOM creating engine-extract/org/netbeans/installer/utils/applications/COPIED_TESTJDK in engine-extract/org/netbeans/installer/utils/applications" />
+                    <touch file="engine-extract/org/netbeans/installer/utils/applications/COPIED_TESTJDK" />
+                    <copy file="${lying.testjdk.class}" todir="engine-extract/org/netbeans/installer/utils/applications" />
 
-                <copy file="${commonlauncher.class}" todir="engine-extract/${commonlauncher.dir}" />
-                <touch file="engine-extract/${commonlauncher.dir}/UPDATED_COMMONLAUNCHER" />
-                <copy file="${createnativelauncheraction.class}" todir="engine-extract/${createnativelauncheraction.dir}"/>
-                <touch file="engine-extract/${createnativelauncheraction.dir}/UPDATED_CREATEDNATIVELAUNCHER" />
-                <!--  dangeroos kipawah
-                <echo message="HIMOM updating jar ${engine.jar} with nlw.exe" />
-                <copy file="${nlw.exe}" todir="engine-extract/native/launcher/windows"/>
-                <touch file="engine-extract/native/launcher/windows/UPDATED_NLW" />
-                -->
+                    <copy file="${commonlauncher.class}" todir="engine-extract/${commonlauncher.dir}" />
+                    <touch file="engine-extract/${commonlauncher.dir}/UPDATED_COMMONLAUNCHER" />
+                    <copy file="${createnativelauncheraction.class}" todir="engine-extract/${createnativelauncheraction.dir}"/>
+                    <touch file="engine-extract/${createnativelauncheraction.dir}/UPDATED_CREATEDNATIVELAUNCHER" />
 
-                <echo message="HIMOM updating jar ${engine.jar} with contents of engine-extract" />
-                <jar destfile="${engine.jar}"  update="yes">
-                    <zipfileset dir="engine-extract" />
-                </jar>
+                    <echo message="CUSTOM updating jar ${engine.jar} with contents of engine-extract" />
+                    <jar destfile="${engine.jar}"  update="yes">
+                        <zipfileset dir="engine-extract" />
+                    </jar>
+                </if>
+                <if property="testWindowsLauncher" value="true">
+                    <echo message="CUSTOM Updating nbi-engine.jar with new launcher" />
+                    <echo message="CUSTOM extracting contents of jar to engine-extract" />
+                    <delete dir="engine-extract"/>
+                    <mkdir dir="engine-extract"/>
+                    <unjar src="${engine.jar}" dest="engine-extract">
+                        <patternset>
+                            <include name="native/launcher/windows/*"/>
+                        </patternset>
+                    </unjar>
+                    <echo message="CUSTOM updating jar ${engine.jar} with nlw.exe" />
+                    <copy file="${nlw.exe}" todir="engine-extract/native/launcher/windows"/>
+                    <touch file="engine-extract/native/launcher/windows/UPDATED_NLW" />
+                    <jar destfile="${engine.jar}"  update="yes">
+                        <zipfileset dir="engine-extract" />
+                    </jar>
+                </if>
             </if>
         </for-each>
+        <!-- CUSTOM -->
 
         <!-- so this created a jar build/registry-temp/engine.jar that has TestJdk.jar in org.netbeans.installer.utils.applications
         We would like to replace that (I feel like I'm writing a virus). -->
@@ -256,16 +252,14 @@
             <property
                 name="engine.dist.file"
                 value="${output.dir}/registry-temp/engine.jar"/>
-
-
         </ant>
 
     </target>
 
     <target name="-generate-bundles">
-        <echo message="HIMOM platforms = ${target.platforms}"/>
+        <echo message="CUSTOM platforms = ${target.platforms}"/>
         <for-each property="platform" list="${target.platforms}" separator=" ">
-            <echo message="HIMOM platform = ${platform}"/>
+            <echo message="CUSTOM platform = ${platform}"/>
 
             <condition property="bundle.extention.${platform}" value="exe">
                 <contains string="${platform}" substring="windows"/>
@@ -283,34 +277,67 @@
             <set property="bundle.extention" source="bundle.extention.${platform}"/>
 
             <if property="platform" value="windows">
-                <echo message="HIMOM Building Windows Installer"/>
-                <create-bundle root="${output.dir}/registry-temp"
-                               platform="${platform}"
-                               keepTempBundles="true"
-                               target="${bundles.release.dir}/${bundle.files.prefix}-${platform}.${bundle.extention}">
-                    <component uid="${main.product.uid}" version="1.0.0.0.0"/>
-                    <property name="nbi.bundled.jvm.file" value="${jre.exe}"/>
+                <if property="includeJRE" value="true">
+                    <if property="hackEngineJar" value="true">
+                        <echo message="CUSTOM Building Windows Installer with custom JRE and modified engine"/>
+                        <create-bundle root="${output.dir}/registry-temp"
+                                       platform="${platform}"
+                                       keepTempBundles="true"
+                                       target="${bundles.release.dir}/${bundle.files.prefix}-${platform}.${bundle.extention}">
+                            <component uid="${main.product.uid}" version="1.0.0.0.0"/>
+                            <property name="nbi.bundled.jvm.file" value="${jre.exe}"/>
 
-                    <!--  Didn't work
-                    <property name="nbi.windows.compatible.jvm" value="minVersion=11,maxVersion=14,vendor=AdoptOpenJDK,osName=Windows 10,osArch=amd64"/>
-                    -->
-                    <property name="nbi.windows.compatible.jvm" value="minVersion=1.8,maxVersion=1.8.500"/>
-                </create-bundle>
+                            <!--  Format
+                            <property name="nbi.windows.compatible.jvm" value="minVersion=11,maxVersion=14,vendor=AdoptOpenJDK,osName=Windows 10,osArch=amd64"/>
+                            -->
+                            <property name="nbi.windows.compatible.jvm" value="minVersion=1.8,maxVersion=1.8.500"/>
+                        </create-bundle>
+                    </if>
+                    <if property="hackEngineJar" value="false">
+                        <echo message="CUSTOM Building Windows Installer with custom JRE and modified engine"/>
+                        <create-bundle root="${output.dir}/registry-temp"
+                                       platform="${platform}"
+                                       keepTempBundles="true"
+                                       target="${bundles.release.dir}/${bundle.files.prefix}-${platform}.${bundle.extention}">
+                            <component uid="${main.product.uid}" version="1.0.0.0.0"/>
+                            <property name="nbi.bundled.jvm.file" value="${jre.exe}"/>
+                        </create-bundle>
+                    </if>
+                </if>
+                <if property="includeJRE" value="false">
+                    <echo message="CUSTOM Building Windows Installer without JRE and unmodified engine"/>
+                    <create-bundle root="${output.dir}/registry-temp"
+                                   platform="${platform}"
+                                   keepTempBundles="true"
+                                   target="${bundles.release.dir}/${bundle.files.prefix}-${platform}.${bundle.extention}">
+                        <component uid="${main.product.uid}" version="1.0.0.0.0"/>
+                    </create-bundle>
+                </if>
             </if>
 
             <if property="platform" value="linux">
-                <echo message="HIMOM Building Linux Installer"/>
-                <create-bundle root="${output.dir}/registry-temp"
-                               platform="${platform}"
-                               target="${bundles.release.dir}/${bundle.files.prefix}-${platform}.${bundle.extention}">
-                    <component uid="${main.product.uid}" version="1.0.0.0.0"/>
-                    <property name="nbi.bundled.jvm.file" value="${jre-linux}"/>
-                </create-bundle>
+                <if property="includeJRE" value="true">
+                    <echo message="CUSTOM Building Linux Installer with custom JRE"/>
+                    <create-bundle root="${output.dir}/registry-temp"
+                                   platform="${platform}"
+                                   target="${bundles.release.dir}/${bundle.files.prefix}-${platform}.${bundle.extention}">
+                        <component uid="${main.product.uid}" version="1.0.0.0.0"/>
+                        <property name="nbi.bundled.jvm.file" value="${jre-linux}"/>
+                    </create-bundle>
+                </if>
+                <if property="includeJRE" value="false">
+                    <echo message="CUSTOM Building Linux Installer without custom JRE"/>
+                    <create-bundle root="${output.dir}/registry-temp"
+                                   platform="${platform}"
+                                   target="${bundles.release.dir}/${bundle.files.prefix}-${platform}.${bundle.extention}">
+                        <component uid="${main.product.uid}" version="1.0.0.0.0"/>
+                    </create-bundle>
+                </if>
             </if>
 
 
             <!--
-<echo message="HIMOM Building Installer for ${target.platform}"/>
+<echo message="CUSTOM Building Installer for ${target.platform}"/>
 <create-bundle root="${output.dir}/registry-temp"
                platform="${platform}"
                target="${bundles.release.dir}/${bundle.files.prefix}-${platform}.${bundle.extention}">

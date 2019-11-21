@@ -28,8 +28,9 @@
   core properties. For more details on the values of these properties see
   the build.properties file.
 
+    CUSTOM This script has been modified to fix a double quote bug in the unix .conf file and
+    to add a jdkhome configuration line pointing at the embedded jre location.
 
-    FOO!!!
 -->
 <project name="helloworld-product" default="usage" basedir=".">
     <!-- import the properties that are specific to this environment -->
@@ -68,18 +69,24 @@
 
         <!-- BEGIN CUSTOM -->
         <!-- fix the broken unix stuff -->
-        <!-- XXX needs to be a toplevel property-->
-        <!-- XXX conditional on linux build -->
-        <property name="app.conf" value="${data.directory}/etc/installerswithembeddedjvm.conf"/>
-        <echo message="HIMOM - fixing ${app.conf}"/>
-        <replace file="${app.conf}" encoding="utf-8" >
-            <!-- stupid typo breaks installer -->
-            <replacefilter token="&quot;&quot;" value="&quot;"/>
-            <!-- tell shell script where to find embedded jre -->
-            <replacefilter token="#jdkhome=&quot;/path/to/jdk&quot;" value="jdkhome=&quot;jre&quot;"/>
-        </replace>
+        <property name="app.conf" value="${data.directory}/etc/${product.data.sub.dir}.conf"/>
+        <if property="fixUnixConfFile" value="true">
+            <echo message="CUSTOM - fixing ${app.conf}"/>
+            <replace file="${app.conf}" encoding="utf-8" >
+                <!-- stupid typo breaks installer -->
+                <replacefilter token="&quot;&quot;" value="&quot;"/>
+            </replace>
+            <echo message="CUSTOM - done fixing ${app.conf}"/>
+        </if>
+        <!-- tell shell script where to find embedded jre -->
+        <if property="includeJRE" value="true">
+            <echo message="CUSTOM - adding jre to ${app.conf}"/>
+            <replace file="${app.conf}"  encoding="utf-8" >
+                <replacefilter token="#jdkhome=&quot;/path/to/jdk&quot;" value="jdkhome=&quot;jre&quot;"/>
+            </replace>
+            <echo message="CUSTOM - done adding jre to ${app.conf}"/>
+        </if>
 
-        <echo message="HIMOM - done fixing ${app.conf}"/>
         <!-- END CUSTOM -->
     </target>
 
