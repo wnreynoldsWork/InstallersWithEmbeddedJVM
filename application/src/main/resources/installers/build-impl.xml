@@ -18,7 +18,7 @@ is divided into following sections:
   - applet
   - cleanup
 
-HIMOM - this has been modified to remove the -Xbootclasspath/p argument to javac, which is not supported under Java 11.
+CUSTOM - this has been modified to remove the -Xbootclasspath/p argument to javac, which is not supported under Java 11.
         -->
 <project xmlns:j2seproject1="http://www.netbeans.org/ns/j2se-project/1" xmlns:j2seproject3="http://www.netbeans.org/ns/j2se-project/3" xmlns:jaxrpc="http://www.netbeans.org/ns/j2se-project/jax-rpc" basedir=".." default="default" name="HelloWorld_Engine-impl">
     <fail message="Please build using Ant 1.8.0 or higher.">
@@ -169,8 +169,10 @@ HIMOM - this has been modified to remove the -Xbootclasspath/p argument to javac
         <condition property="do.depend.true">
             <istrue value="${do.depend}"/>
         </condition>
+        <!-- CUSTOM -->
         <path id="endorsed.classpath.path" path="${endorsed.classpath}"/>
         <property name="endorsed.classpath.cmd.line.arg" value=""/>
+        <!-- CUSTOM -->
         <condition else="" property="javac.profile.cmd.line.arg" value="-profile ${javac.profile}">
             <isset property="profile.available"/>
         </condition>

@@ -86,7 +86,6 @@
 
         <!-- CUSTOM FIXES -->
 
-        <echo message="fixUnixConfFile Passed properties: hackEngineJar = ${hackEngineJar}, includeJRE=${includeJRE}, testWindowsLauncher=${testWindowsLauncher}" />
         <!-- This file fixes a bug in the unix .conf file and adds a jdkhome variable pointing at the embedded jvm -->
         <echo message="CUSTOM copying ../../src/main/resources/installers/build_helloworld_product.xml to ${nbi.ext.dir}/infra/build/products/helloworld/build.xml"/>
         <copy file="../../src/main/resources/installers/build_helloworld_product.xml"  tofile="${nbi.ext.dir}/infra/build/products/helloworld/build.xml" overwrite="true" />
@@ -223,7 +222,6 @@
                 </if>
             </if>
         </for-each>
-        <!-- CUSTOM -->
 
         <!-- so this created a jar build/registry-temp/engine.jar that has TestJdk.jar in org.netbeans.installer.utils.applications
         We would like to replace that (I feel like I'm writing a virus). -->
@@ -279,7 +277,7 @@
             <if property="platform" value="windows">
                 <if property="includeJRE" value="true">
                     <if property="hackEngineJar" value="true">
-                        <echo message="CUSTOM Building Windows Installer with custom JRE and modified engine"/>
+                        <echo message="CUSTOM Building Windows Installer with embedded JRE and modified engine"/>
                         <create-bundle root="${output.dir}/registry-temp"
                                        platform="${platform}"
                                        keepTempBundles="true"
@@ -294,7 +292,7 @@
                         </create-bundle>
                     </if>
                     <if property="hackEngineJar" value="false">
-                        <echo message="CUSTOM Building Windows Installer with custom JRE and modified engine"/>
+                        <echo message="CUSTOM Building Windows Installer with embedded JRE and unmodified engine"/>
                         <create-bundle root="${output.dir}/registry-temp"
                                        platform="${platform}"
                                        keepTempBundles="true"
@@ -317,7 +315,7 @@
 
             <if property="platform" value="linux">
                 <if property="includeJRE" value="true">
-                    <echo message="CUSTOM Building Linux Installer with custom JRE"/>
+                    <echo message="CUSTOM Building Linux Installer with embedded JRE"/>
                     <create-bundle root="${output.dir}/registry-temp"
                                    platform="${platform}"
                                    target="${bundles.release.dir}/${bundle.files.prefix}-${platform}.${bundle.extention}">
@@ -326,7 +324,7 @@
                     </create-bundle>
                 </if>
                 <if property="includeJRE" value="false">
-                    <echo message="CUSTOM Building Linux Installer without custom JRE"/>
+                    <echo message="CUSTOM Building Linux Installer without embedded JRE"/>
                     <create-bundle root="${output.dir}/registry-temp"
                                    platform="${platform}"
                                    target="${bundles.release.dir}/${bundle.files.prefix}-${platform}.${bundle.extention}">
@@ -344,6 +342,7 @@
     <component uid="${main.product.uid}" version="1.0.0.0.0"/>
 </create-bundle>
             -->
+        <!-- CUSTOM -->
 
             <if property="bundle.extention" value="zip">
                 <antcall target="zip-to-tgz">
