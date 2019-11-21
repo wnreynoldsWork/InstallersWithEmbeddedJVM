@@ -25,6 +25,11 @@ sufficiently complex with Maven/Ant that it destroyed any educational
 benefit. Bot files are self-extracting zips, so if you rename them to
 "jre.zip" or "jre-linux.zip", you will be able to examine their contents.
 
+To build installers, run "mvn install" from the parent directory, and
+then "mvn nbm:build-installers" from the application directory. This
+should yield a Windows and linux Installer that you can test in the
+application/target directory.
+
 Much of this was guided by an old post of Geertjan Wielenga at
 https://blogs.oracle.com/geertjan/installing-the-jre-via-an-applications-installer-via-windows
 and the article at https://dzone.com/articles/including-jre-in-nbi. These
