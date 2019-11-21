@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>demo</groupId>
+        <artifactId>installerswithembeddedjvm-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <groupId>demo</groupId>
+    <artifactId>installerswithembeddedjvm-app</artifactId>
+    <packaging>nbm-application</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <name>InstallersWithEmbeddedJVM-app</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <all.clusters>${project.build.directory}/${brandingToken}</all.clusters>
+        <nbi.engine.jar>${basedir}/../lib/nbi-engine.jar/</nbi.engine.jar>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>installerswithembeddedjvm-himom</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>installerswithembeddedjvm-branding</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.cluster</groupId>
+            <artifactId>platform</artifactId>
+            <version>${netbeans.version}</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.sample</groupId>
+            <artifactId>sample</artifactId>
+            <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>${nbi.engine.jar}</systemPath>
+        </dependency>
+    </dependencies>
+
+    <!--
+    linux jvm
+    https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.5%2B10/OpenJDK11U-jdk_x64_linux_hotspot_11.0.5_10.tar.gz
+
+    windows jvm
+    https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.5%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.5_10.zip
+
+    windows unzip
+    ftp://ftp.info-zip.org/pub/infozip/win32/unz600dn.zip
+    -->
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.netbeans.utilities</groupId>
+                <artifactId>nbm-maven-plugin</artifactId>
+                <configuration>
+                    <!-- preferable that linux runs first  -->
+                    <installerOsLinux>true</installerOsLinux>
+                    <installerOsWindows>true</installerOsWindows>
+                    <!-- these won't work -->
+                    <installerOsSolaris>false</installerOsSolaris>
+                    <installerOsMacosx>false</installerOsMacosx>
+                    <templateFile>src/main/resources/installers/template.xml</templateFile>
+                    <userSettings>
+                        <!-- If you want working installers, as of NB 11.2, all of these should be true, except testWindowsLauncher -->
+                        <!-- fix a bug in the unix installer config file -->
+                        <fixUnixConfFile>true</fixUnixConfFile>
+                        <!-- remove the -XbootClassPath/p argument to javac which is gone from Java 11 -->
+                        <fixNoBootClassPath>true</fixNoBootClassPath>
+                        <!-- Fix the javac.source=1.5, javac.target=1.5 bugs in the project.properties files in the harness. Replace with target=source=11
+                            Edit template.xml to change desired target/source.
+                        -->
+                        <fixJavaSourceTargetProperties>true</fixJavaSourceTargetProperties>
+                        <!-- Modify the engine.jar file to include custom classes to trick the buggy windows installer into working .
+                            This will also use the custom create-bundle task to embed version numbers in the windows installer that
+                            will work around the bugs.
+                        -->
+                        <hackEngineJar>true</hackEngineJar>
+                        <!-- embed a jre in the installers. You could set this to false, but then why are you here? -->
+                        <includeJRE>true</includeJRE>
+                        <!-- test a new nlw.exe. This file will have to exist in main/resources/installers. This fail if hackEngineJar=true. Instead, it
+                        will put the test nlw.exe in the engine jar and use it to construct an installer. This also assumes includeJRE -->
+                        <testWindowsLauncher>false</testWindowsLauncher>
+                    </userSettings>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <executions>
+                    <execution>
+                        <id>compileClasses</id>
+                        <phase>compile</phase>
+                        <configuration>
+                            <source>11</source>
+                            <target>11</target>
+                        </configuration>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>deployment</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.netbeans.utilities</groupId>
+                        <artifactId>nbm-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>extra</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>build-installers</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

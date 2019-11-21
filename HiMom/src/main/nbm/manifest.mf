@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+AutoUpdate-Show-In-Client: true
+OpenIDE-Module: demo.HiMom
+OpenIDE-Module-Layer: demo/layer.xml
+OpenIDE-Module-Localizing-Bundle: demo/Bundle.properties
+OpenIDE-Module-Requires: org.openide.windows.WindowManager
+OpenIDE-Module-Specification-Version: 1.0
+
