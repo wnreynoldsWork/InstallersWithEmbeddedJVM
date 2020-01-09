@@ -194,7 +194,7 @@ public class ConfigurationLogic extends ProductConfigurationLogic {
         File javaHome = new File(System.getProperty("java.home"));
         File target = new File(installLocation, "jre");
         try {
-            FileUtils.copyFile(javaHome, target, true); //FileUtils is one of the NBI core classes, already imported
+            FileUtils.copyNestedJRE(javaHome, target, new Progress()); // addresses a bug where the installed JRE can't be executed by non-admin
         } catch (IOException e) {
             JOptionPane.showMessageDialog(null, "Cannot copy JRE");
         }
